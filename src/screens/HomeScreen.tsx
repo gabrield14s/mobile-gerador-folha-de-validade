@@ -1,17 +1,17 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
-  View,
+  Alert,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  Alert,
+  View,
 } from 'react-native';
-import { Product } from '../models/Product';
-import { applyDateMask, parseDisplayDateToISO } from '../utils/dateHelpers';
 import ProductTable from '../components/ProductTable';
+import { Product } from '../models/Product';
 import BarcodeScannerModal from '../screens/BarcodeScannerModal';
+import { applyDateMask, parseDisplayDateToISO } from '../utils/dateHelpers';
 
 const GREEN = '#1D9E75';
 
@@ -22,6 +22,7 @@ export default function HomeScreen() {
   const [quantity, setQuantity] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [scannerVisible, setScannerVisible] = useState(false);
+  const [showBarcode, setShowBarcode] = useState(false);
 
   const descRef = useRef<TextInput>(null);
   const expiryRef = useRef<TextInput>(null);
@@ -101,10 +102,19 @@ export default function HomeScreen() {
             returnKeyType="next"
             onSubmitEditing={() => descRef.current?.focus()}
           />
-          {/* TODO: substituir por <BarcodeScanner /> quando integrar expo-barcode-scanner */}
+          {showBarcode && (
+            <BarcodeScannerModal
+              visible={showBarcode}
+              onClose={() => setShowBarcode(false)}
+              onScanned={(code) => {
+                setBarcode(code);
+                setShowBarcode(false);
+              }}
+            />
+          )}
           <TouchableOpacity
             style={styles.scanBtn}
-            onPress={() => Alert.alert('Scanner', 'Câmera ainda não implementada.')}
+            onPress={() => setShowBarcode(true)}
           >
             <Text style={styles.scanBtnIcon}>▦</Text>
           </TouchableOpacity>
