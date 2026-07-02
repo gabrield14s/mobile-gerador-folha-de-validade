@@ -12,6 +12,7 @@ import ProductTable from '../components/ProductTable';
 import { Product } from '../models/Product';
 import BarcodeScannerModal from '../screens/BarcodeScannerModal';
 import { applyDateMask, parseDisplayDateToISO } from '../utils/dateHelpers';
+import { gerarPDF } from '../controls/pdfGenerator';
 
 const GREEN = '#1D9E75';
 
@@ -183,7 +184,7 @@ export default function HomeScreen() {
         {/* TODO: integrar geração de PDF */}
         <TouchableOpacity
           style={[styles.actionBtn, styles.pdfBtn]}
-          onPress={() => Alert.alert('PDF', 'Geração de PDF ainda não implementada.')}
+          onPress={() => gerarPDF(products)}
         >
           <Text style={styles.pdfBtnText}>Gerar PDF</Text>
         </TouchableOpacity>
