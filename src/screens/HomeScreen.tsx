@@ -13,6 +13,8 @@ import { Product } from '../models/Product';
 import BarcodeScannerModal from '../screens/BarcodeScannerModal';
 import { applyDateMask, parseDisplayDateToISO } from '../utils/dateHelpers';
 import { gerarPDF } from '../controls/pdfGenerator';
+import { fetchProductName } from '../services/productService';
+import { useProducts } from '../context/ProductsContext';
 
 const GREEN = '#1D9E75';
 
@@ -21,9 +23,8 @@ export default function HomeScreen() {
   const [description, setDescription] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [quantity, setQuantity] = useState('');
-  const [products, setProducts] = useState<Product[]>([]);
+  const { products, addProduct, removeProduct, clearProducts } = useProducts();
   const [scannerVisible, setScannerVisible] = useState(false);
-  const [showBarcode, setShowBarcode] = useState(false);
 
   const descRef = useRef<TextInput>(null);
   const expiryRef = useRef<TextInput>(null);
@@ -41,16 +42,12 @@ export default function HomeScreen() {
       return;
     }
 
-    setProducts(prev => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        barcode: barcode.trim(),
-        description: description.trim(),
-        expiryDate: isoDate,
-        quantity: parseInt(quantity) || 1,
-      },
-    ]);
+    addProduct({
+      barcode: barcode.trim(),
+      description: description.trim(),
+      expiryDate: isoDate,
+      quantity: parseInt(quantity) || 1,
+    });
 
     setBarcode('');
     setDescription('');
@@ -61,7 +58,7 @@ export default function HomeScreen() {
   const handleRemove = (id: string) => {
     Alert.alert('Remover produto', 'Tem certeza?', [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Remover', style: 'destructive', onPress: () => setProducts(prev => prev.filter(p => p.id !== id)) },
+      { text: 'Remover', style: 'destructive', onPress: () => removeProduct },
     ]);
   };
 
@@ -69,8 +66,18 @@ export default function HomeScreen() {
     if (products.length === 0) return;
     Alert.alert('Limpar tudo', 'Remover todos os produtos?', [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Limpar', style: 'destructive', onPress: () => setProducts([]) },
+      { text: 'Limpar', style: 'destructive', onPress: () => clearProducts },
     ]);
+  };
+
+  // único ponto de entrada após leitura do barcode:
+  // preenche código → fecha modal → busca nome na API → preenche descrição → foca próximo campo
+  const handleScanned = async (code: string) => {
+    setBarcode(code);
+    setScannerVisible(false);
+    const name = await fetchProductName(code);
+    if (name) setDescription(name);
+    descRef.current?.focus();
   };
 
   return (
@@ -103,19 +110,9 @@ export default function HomeScreen() {
             returnKeyType="next"
             onSubmitEditing={() => descRef.current?.focus()}
           />
-          {showBarcode && (
-            <BarcodeScannerModal
-              visible={showBarcode}
-              onClose={() => setShowBarcode(false)}
-              onScanned={(code) => {
-                setBarcode(code);
-                setShowBarcode(false);
-              }}
-            />
-          )}
           <TouchableOpacity
             style={styles.scanBtn}
-            onPress={() => setShowBarcode(true)}
+            onPress={() => setScannerVisible(true)}
           >
             <Text style={styles.scanBtnIcon}>▦</Text>
           </TouchableOpacity>
@@ -181,7 +178,6 @@ export default function HomeScreen() {
 
       {/* Rodapé */}
       <View style={styles.bottomBar}>
-        {/* TODO: integrar geração de PDF */}
         <TouchableOpacity
           style={[styles.actionBtn, styles.pdfBtn]}
           onPress={() => gerarPDF(products)}
@@ -193,13 +189,11 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Modal único de scanner */}
       <BarcodeScannerModal
         visible={scannerVisible}
         onClose={() => setScannerVisible(false)}
-        onScanned={(data) => {
-          setBarcode(data);
-          descRef.current?.focus(); // já leva o foco pro próximo campo
-        }}
+        onScanned={handleScanned}
       />
 
     </ScrollView>
@@ -211,6 +205,7 @@ const styles = StyleSheet.create({
   content: { paddingBottom: 40 },
 
   header: {
+    marginTop: 30,
     backgroundColor: '#fff',
     flexDirection: 'row',
     alignItems: 'center',
